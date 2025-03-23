@@ -2,7 +2,7 @@ const accessTokenStorageKey = 'ynab-app-access-token';
 const routeStorageKey = 'route-storage-key';
 
 export interface Auth {
-  accessToken: any;
+  accessToken: string;
 }
 
 export type AuthListener = (auth: Auth) => void;
@@ -13,10 +13,7 @@ let attemptedToRestoreAuth = false;
 const authListeners: AuthListener[] = [
   (auth) => {
     if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(
-        accessTokenStorageKey,
-        JSON.stringify(auth.accessToken),
-      );
+      localStorage.setItem(accessTokenStorageKey, auth.accessToken);
     }
   },
 ];
@@ -34,8 +31,7 @@ export function getAuth(): Auth | null {
       return null;
     }
 
-    const accessToken = JSON.parse(storedAccessToken);
-    currentAuth = { accessToken };
+    currentAuth = { accessToken: storedAccessToken };
   }
 
   return currentAuth;
@@ -50,12 +46,16 @@ export function addListener(listener: AuthListener) {
   }
 }
 
-export function setAuth(accessToken: any) {
-  authListeners.forEach((listener) => listener(accessToken));
+export function setAccessToken(accessToken: string) {
+  const auth = { accessToken };
+
+  authListeners.forEach((listener) => listener(auth));
+
+  currentAuth = auth;
 }
 
 export function saveRoute(route: string) {
-  window.localStorage.setItem(route, route);
+  window.localStorage.setItem(routeStorageKey, route);
 }
 
 export function popRoute() {

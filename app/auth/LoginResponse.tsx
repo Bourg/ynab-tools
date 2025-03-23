@@ -1,5 +1,5 @@
 import type { Route } from './+types/LoginResponse';
-import { popRoute, setAuth } from '~/auth/index';
+import { popRoute, setAccessToken } from '~/auth/index';
 import { redirect } from 'react-router';
 
 export function clientLoader() {
@@ -12,7 +12,7 @@ export function clientLoader() {
     throw new Error('Access token not found');
   }
 
-  setAuth(accessToken);
+  setAccessToken(accessToken);
 
   return redirect(popRoute() ?? '/');
 }
