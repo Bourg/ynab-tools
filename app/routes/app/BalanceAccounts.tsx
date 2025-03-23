@@ -123,6 +123,15 @@ function Balancer({
             </button>
           </li>
         ))}
+        <li>
+          <button
+            onClick={() =>
+              setState((prev) => setAnyDestination(prev, nextCategory))
+            }
+          >
+            Any Account will Do!
+          </button>
+        </li>
       </ul>
     </>
   );
@@ -141,21 +150,48 @@ function BalancingResults({
 }) {
   const currency = useCurrency(settings.currency_format);
 
-  const perfectBalances = Object.fromEntries(
+  const minimumWorkingBalancesByAccount = Object.fromEntries(
     potentialDestinations.map((d) => [d.id, 0] as [string, number]),
   );
 
   relevantCategories.forEach(
     (c) =>
-      (perfectBalances[state.destinationAccountsByCategory[c.id]] += c.balance),
+      (minimumWorkingBalancesByAccount[
+        state.destinationAccountsByCategory[c.id]
+      ] += c.balance),
   );
 
-  return potentialDestinations.map((d) => (
-    <dl>
-      <dt>{d.name}</dt>
-      <dd>{currency(perfectBalances[d.id])}</dd>
-    </dl>
-  ));
+  return (
+    <table>
+      <thead>
+        <tr>
+          <td>Account</td>
+          <td>Actual Balance</td>
+          <td>Minimum Working Balance</td>
+          <td>Deficit from Minimum Working Balance</td>
+        </tr>
+      </thead>
+      <tbody>
+        {potentialDestinations.map((d) => {
+          const minBal = minimumWorkingBalancesByAccount[d.id];
+          const deficitFromMinBal = minBal - d.balance;
+
+          return (
+            <tr>
+              <td>{d.name}</td>
+              <td>{currency(d.balance)}</td>
+              <td>{currency(minBal)}</td>
+              <td>
+                {deficitFromMinBal > 0
+                  ? `Deficit of ${currency(deficitFromMinBal)}`
+                  : `Surplus of ${currency(-deficitFromMinBal)}`}
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  );
 }
 
 function Remover({
@@ -181,21 +217,11 @@ function Remover({
         isDestinationKnown(state, c) ? (
           <li>
             <button
-              onClick={() =>
-                setState((prev) => {
-                  const destinationAccountsByCategory = {
-                    ...prev.destinationAccountsByCategory,
-                  };
-                  delete destinationAccountsByCategory[c.id];
-                  return {
-                    ...prev,
-                    destinationAccountsByCategory,
-                  };
-                })
-              }
+              onClick={() => setState((prev) => clearDestination(prev, c))}
             >
               {c.name} -&gt;{' '}
-              {accountsById[state.destinationAccountsByCategory[c.id]].name}
+              {accountsById[state.destinationAccountsByCategory[c.id]]?.name ??
+                'Any Destination'}
             </button>
           </li>
         ) : null,
@@ -206,6 +232,7 @@ function Remover({
 
 interface State {
   destinationAccountsByCategory: Record<string, string>;
+  categoriesAnyDestination: Array<string>;
 }
 
 function isGroupRelevant(group: CategoryGroupWithCategories) {
@@ -225,7 +252,10 @@ function isPotentialDestination(account: Account) {
 }
 
 function isDestinationKnown(state: State, category: Category) {
-  return state.destinationAccountsByCategory[category.id] != null;
+  return (
+    state.destinationAccountsByCategory[category.id] != null ||
+    state.categoriesAnyDestination.includes(category.id)
+  );
 }
 
 function setDestination(state: State, category: Category, account: Account) {
@@ -235,6 +265,28 @@ function setDestination(state: State, category: Category, account: Account) {
       ...state.destinationAccountsByCategory,
       [category.id]: account.id,
     },
+  };
+}
+
+function setAnyDestination(state: State, category: Category) {
+  return {
+    ...state,
+    categoriesAnyDestination: [...state.categoriesAnyDestination, category.id],
+  };
+}
+
+function clearDestination(state: State, category: Category): State {
+  const destinationAccountsByCategory = {
+    ...state.destinationAccountsByCategory,
+  };
+  delete destinationAccountsByCategory[category.id];
+
+  return {
+    ...state,
+    destinationAccountsByCategory,
+    categoriesAnyDestination: state.categoriesAnyDestination.filter(
+      (cid) => cid !== category.id,
+    ),
   };
 }
 
@@ -275,5 +327,6 @@ function storageKey(budgetId: string) {
 function defaultBalancingState(): State {
   return {
     destinationAccountsByCategory: {},
+    categoriesAnyDestination: [],
   };
 }
