@@ -4,10 +4,17 @@ import { useCurrency } from '~/hooks/useCurrency';
 import {
   type Account,
   AccountType,
+  type BudgetSettings,
   type Category,
   type CategoryGroupWithCategories,
 } from 'ynab';
-import { useEffect, useMemo, useState } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from 'react';
 
 export async function clientLoader({
   params: { budgetId },
@@ -29,7 +36,6 @@ export default function BalanceAccounts({
   params: { budgetId },
   loaderData: { settings, accounts, categoryGroups },
 }: Route.ComponentProps) {
-  const currency = useCurrency(settings.currency_format);
   const [state, setState] = useBalancingState(budgetId);
 
   const potentialDestinations = useMemo(
@@ -52,24 +58,50 @@ export default function BalanceAccounts({
   );
 
   if (undesignatedCategories.length <= 0) {
-    const perfectBalances = Object.fromEntries(
-      potentialDestinations.map((d) => [d.id, 0] as [string, number]),
+    return (
+      <>
+        <BalancingResults
+          state={state}
+          potentialDestinations={potentialDestinations}
+          relevantCategories={relevantCategories}
+          settings={settings}
+        />
+        <Remover
+          state={state}
+          setState={setState}
+          accounts={accounts}
+          categories={relevantCategories}
+        />
+      </>
     );
-
-    relevantCategories.forEach(
-      (c) =>
-        (perfectBalances[state.destinationAccountsByCategory[c.id]] +=
-          c.balance),
-    );
-
-    return potentialDestinations.map((d) => (
-      <dl>
-        <dt>{d.name}</dt>
-        <dd>{currency(perfectBalances[d.id])}</dd>
-      </dl>
-    ));
   }
 
+  return (
+    <>
+      <Balancer
+        setState={setState}
+        undesignatedCategories={undesignatedCategories}
+        potentialDestinations={potentialDestinations}
+      />
+      <Remover
+        state={state}
+        setState={setState}
+        accounts={accounts}
+        categories={relevantCategories}
+      />
+    </>
+  );
+}
+
+function Balancer({
+  setState,
+  undesignatedCategories,
+  potentialDestinations,
+}: {
+  setState: Dispatch<SetStateAction<State>>;
+  undesignatedCategories: Category[];
+  potentialDestinations: Account[];
+}) {
   const nextCategory = undesignatedCategories[0];
 
   return (
@@ -92,28 +124,82 @@ export default function BalanceAccounts({
           </li>
         ))}
       </ul>
+    </>
+  );
+}
 
-      <h2>Accounts</h2>
-      <ul>
-        {accounts.map((account) => (
+function BalancingResults({
+  state,
+  potentialDestinations,
+  relevantCategories,
+  settings,
+}: {
+  state: State;
+  potentialDestinations: Account[];
+  relevantCategories: Category[];
+  settings: BudgetSettings;
+}) {
+  const currency = useCurrency(settings.currency_format);
+
+  const perfectBalances = Object.fromEntries(
+    potentialDestinations.map((d) => [d.id, 0] as [string, number]),
+  );
+
+  relevantCategories.forEach(
+    (c) =>
+      (perfectBalances[state.destinationAccountsByCategory[c.id]] += c.balance),
+  );
+
+  return potentialDestinations.map((d) => (
+    <dl>
+      <dt>{d.name}</dt>
+      <dd>{currency(perfectBalances[d.id])}</dd>
+    </dl>
+  ));
+}
+
+function Remover({
+  state,
+  setState,
+  accounts,
+  categories,
+}: {
+  state: State;
+  setState: Dispatch<SetStateAction<State>>;
+  accounts: Account[];
+  categories: Category[];
+}) {
+  const accountsById = useMemo(
+    () => Object.fromEntries(accounts.map((a) => [a.id, a])),
+    [accounts],
+  );
+
+  return (
+    <>
+      <h2>Remove Assignments</h2>
+      {categories.map((c) =>
+        isDestinationKnown(state, c) ? (
           <li>
-            {account.name} - {currency(account.balance)} ({account.type})
+            <button
+              onClick={() =>
+                setState((prev) => {
+                  const destinationAccountsByCategory = {
+                    ...prev.destinationAccountsByCategory,
+                  };
+                  delete destinationAccountsByCategory[c.id];
+                  return {
+                    ...prev,
+                    destinationAccountsByCategory,
+                  };
+                })
+              }
+            >
+              {c.name} -&gt;{' '}
+              {accountsById[state.destinationAccountsByCategory[c.id]].name}
+            </button>
           </li>
-        ))}
-      </ul>
-      <h2>Categories</h2>
-      {categoryGroups.map((group) => (
-        <>
-          <h3>{group.name}</h3>
-          <ul>
-            {group.categories.map((category) => (
-              <li>
-                {category.name} - {currency(category.balance)}
-              </li>
-            ))}
-          </ul>
-        </>
-      ))}
+        ) : null,
+      )}
     </>
   );
 }
