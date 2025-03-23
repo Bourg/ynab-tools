@@ -1,13 +1,10 @@
-import type { Route } from "./+types/home";
-import { Welcome } from "../welcome/welcome";
+import { Link } from 'react-router';
+import type { Route } from './+types/home';
 
 export function meta({}: Route.MetaArgs) {
-  return [
-    { title: "New React Router App" },
-    { name: "description", content: "Welcome to React Router!" },
-  ];
+  return [{ title: 'YNAB Tools | Login' }];
 }
 
 export default function Home() {
-  return <Welcome />;
+  return <Link to="/budget">Start the app</Link>;
 }
