@@ -1,7 +1,7 @@
 import { Link } from 'react-router';
 import type { BudgetSummary } from 'ynab';
 import api from '~/api';
-import type { Route } from './+types/index';
+import type { Route } from './+types/SelectBudget';
 
 export async function clientLoader() {
   const budgets = await api().budgets.getBudgets();

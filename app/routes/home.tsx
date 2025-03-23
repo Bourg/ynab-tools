@@ -6,5 +6,5 @@ export function meta({}: Route.MetaArgs) {
 }
 
 export default function Home() {
-  return <Link to="/app">Start the app</Link>;
+  return <Link to="/budget">Start the app</Link>;
 }

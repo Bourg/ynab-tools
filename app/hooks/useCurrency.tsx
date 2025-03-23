@@ -1,11 +1,27 @@
+import { useCallback, useMemo } from 'react';
+
 import type { CurrencyFormat } from 'ynab';
 
-new Intl.NumberFormat(undefined, {});
+export function useCurrency(format: CurrencyFormat | null | undefined) {
+  const formatter = useMemo(() => {
+    if (format == null) {
+      return null;
+    }
 
-export function currency(value: number, format: CurrencyFormat | null) {
-  if (format == null) {
-    return `${value} milliunits`;
-  }
+    return new Intl.NumberFormat(undefined, {
+      style: 'currency',
+      currency: format.iso_code,
+    });
+  }, [format]);
 
-  return `${value}`;
+  return useCallback(
+    (milliunits: number) => {
+      if (formatter == null) {
+        return `${milliunits} milliunits`;
+      }
+
+      return formatter.format(milliunits / 1000);
+    },
+    [formatter],
+  );
 }
