@@ -14,11 +14,7 @@ export function clientLoader({ request }: ClientLoaderFunctionArgs) {
 }
 
 export default function AuthorizedRoute() {
-  return (
-    <p>
-      Authorized Route <Outlet />
-    </p>
-  );
+  return <Outlet />;
 }
 
 function redirectForAuth() {
